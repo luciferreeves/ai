@@ -16,4 +16,5 @@ type BotConfig struct {
 	YoutubeAPIKey       string
 	Activity            ActivityType
 	ActivityMessage     string
+	ActivityURL         string
 }

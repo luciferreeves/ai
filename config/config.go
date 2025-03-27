@@ -32,6 +32,7 @@ func init() {
 		YoutubeAPIKey:       getEnv("YOUTUBE_API_KEY"),
 		Activity:            types.ActivityType(getIntEnv("ACTIVITY")),
 		ActivityMessage:     getEnv("ACTIVITY_MESSAGE"),
+		ActivityURL:         getEnv("ACTIVITY_URL"),
 	}
 
 	if Config.DiscordToken == "" {
@@ -50,18 +51,21 @@ func init() {
 		logger.Log("Unable to read YouTube API key. environment variable YOUTUBE_API_KEY is required", logOptions)
 	}
 
+	logOptions.Level = types.Warn
+	logOptions.Fatal = false
 	if Config.Activity == 0 {
-		logOptions.Level = types.Warn
-		logOptions.Fatal = false
 		logger.Log("Activity message is empty or not set. Defaulting to PLAYING", logOptions)
 		Config.Activity = types.PLAYING
 	}
 
 	if Config.ActivityMessage == "" {
-		logOptions.Level = types.Warn
-		logOptions.Fatal = false
 		logger.Log("Activity message is empty or not set. Defaulting to empty string", logOptions)
 		Config.ActivityMessage = ""
+	}
+
+	if Config.Activity == types.STREAMING && Config.ActivityURL == "" {
+		logger.Log("Activity URL is empty or not set. Defaulting to empty string", logOptions)
+		Config.ActivityURL = ""
 	}
 
 	logOptions.Level = types.Success
