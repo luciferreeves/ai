@@ -1,9 +1,12 @@
 package main
 
 import (
+	"ai/commands"
 	"ai/config"
+	"ai/handlers"
 	"ai/types"
 	"ai/utils/logger"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,12 +31,25 @@ func init() {
 
 	session.Identify.Intents |= discordgo.IntentsAllWithoutPrivileged
 	session.AddHandler(ready)
+	session.AddHandler(handlers.InteractionCreateHandler)
 }
 
 func main() {
 	err = session.Open()
 	if err != nil {
 		logger.Log("error opening connection,", types.LogOptions{Fatal: true, Prefix: ProcessPrefix, Level: types.Error})
+	}
+
+	logger.Log("Registering commands with Discord API.", types.LogOptions{Prefix: ProcessPrefix})
+
+	// Register commands with Discord API
+	registeredCommands, err := session.ApplicationCommandBulkOverwrite(session.State.User.ID, config.Config.GuildID, commands.Commands)
+	if err != nil {
+		logger.Log("Error registering commands with Discord API.", types.LogOptions{Prefix: ProcessPrefix, Level: types.Error, Fatal: true})
+	}
+
+	for _, command := range registeredCommands {
+		logger.Log(fmt.Sprintf("Registered command: %s", command.Name), types.LogOptions{Prefix: ProcessPrefix, Level: types.Success})
 	}
 
 	// Wait here until CTRL-C or other term signal is received.

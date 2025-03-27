@@ -10,6 +10,7 @@ const (
 )
 
 type BotConfig struct {
+	GuildID             string
 	DiscordToken        string
 	SpotifyClientId     string
 	SpotifyClientSecret string

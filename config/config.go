@@ -15,10 +15,9 @@ var Config *types.BotConfig
 func init() {
 	logPrefix := "Config"
 	logOptions := types.LogOptions{
-		Timestamp: true,
-		Prefix:    logPrefix,
-		Level:     types.Error,
-		Fatal:     true,
+		Prefix: logPrefix,
+		Level:  types.Error,
+		Fatal:  true,
 	}
 
 	if err := godotenv.Load(); err != nil {
@@ -26,6 +25,7 @@ func init() {
 	}
 
 	Config = &types.BotConfig{
+		GuildID:             getEnv("GUILD_ID"),
 		DiscordToken:        getEnv("DISCORD_TOKEN"),
 		SpotifyClientId:     getEnv("SPOTIFY_CLIENT_ID"),
 		SpotifyClientSecret: getEnv("SPOTIFY_CLIENT_SECRET"),
@@ -33,6 +33,10 @@ func init() {
 		Activity:            types.ActivityType(getIntEnv("ACTIVITY")),
 		ActivityMessage:     getEnv("ACTIVITY_MESSAGE"),
 		ActivityURL:         getEnv("ACTIVITY_URL"),
+	}
+
+	if Config.GuildID == "" {
+		logger.Log("Unable to read Guild ID. environment variable GUILD_ID is required", logOptions)
 	}
 
 	if Config.DiscordToken == "" {
