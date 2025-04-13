@@ -1,8 +1,8 @@
 # Build stage
 FROM golang:1.24-alpine AS builder
 
-# Install git and build tools
-RUN apk add --no-cache git gcc musl-dev pkgconfig libopus-dev
+# Install git, build tools, pkgconfig, and opus headers
+RUN apk add --no-cache git gcc musl-dev pkgconfig opus-dev
 
 # Set working directory
 WORKDIR /app
@@ -24,7 +24,7 @@ FROM alpine:3.21
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache ffmpeg python3 py3-pip opus libopus-dev ca-certificates && \
+RUN apk add --no-cache ffmpeg python3 py3-pip opus opus-dev ca-certificates && \
     pip3 install --no-cache-dir yt-dlp && \
     mkdir -p /app/temp
 
