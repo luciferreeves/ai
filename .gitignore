@@ -30,3 +30,9 @@ bin/
 
 # Environment variables
 .env
+
+# temp files
+*.tmp
+*.temp
+temp/
+# Logs
