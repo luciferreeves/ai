@@ -193,9 +193,30 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 	var downloadCmd *exec.Cmd
 	cookiesFile := "./cookies/cookies.txt"
 	if _, err := os.Stat(cookiesFile); err == nil {
+		logger.Log("Using cookies file: "+cookiesFile, types.LogOptions{
+			Prefix: "Music Player",
+			Level:  types.Debug,
+		})
+		// log the cookies file data
+		cookiesData, err := os.ReadFile(cookiesFile)
+		if err != nil {
+			logger.Log("Error reading cookies file: "+err.Error(), types.LogOptions{
+				Prefix: "Music Player",
+				Level:  types.Error,
+			})
+		}
+
+		logger.Log("Cookies file data: "+string(cookiesData), types.LogOptions{
+			Prefix: "Music Player",
+			Level:  types.Debug,
+		})
 		downloadCmd = exec.Command("yt-dlp", "--no-warnings", "--quiet", "-x", "--audio-format", "mp3",
 			"--audio-quality", "0", "--no-playlist", "--cookies", cookiesFile, "--output", fileName, videoURL)
 	} else {
+		logger.Log("No cookies file found, downloading without cookies", types.LogOptions{
+			Prefix: "Music Player",
+			Level:  types.Debug,
+		})
 		downloadCmd = exec.Command("yt-dlp", "--no-warnings", "--quiet", "-x", "--audio-format", "mp3",
 			"--audio-quality", "0", "--no-playlist", "--output", fileName, videoURL)
 	}
