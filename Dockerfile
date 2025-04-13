@@ -24,27 +24,26 @@ FROM alpine:3.21
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache ffmpeg python3 py3-pip opus opus-dev ca-certificates \
+RUN apk add --no-cache ffmpeg python3 py3-pip opus opus-dev ca-certificates curl \
     && python3 -m venv /venv \
     && . /venv/bin/activate \
     && pip install --no-cache-dir yt-dlp \
     && ln -s /venv/bin/yt-dlp /usr/local/bin/yt-dlp \
     && mkdir -p /app/temp
 
+# Install cloudflared (ARM64)
+RUN curl -LO https://github.com/cloudflare/cloudflared/releases/download/2025.4.0/cloudflared-linux-arm64 \
+    && chmod +x cloudflared-linux-arm64 \
+    && mv cloudflared-linux-arm64 /usr/local/bin/cloudflared
+
 # Copy the binary from the builder stage
 COPY --from=builder /app/ai/ai .
 
 # Copy environment variables file
-# Note: You can also use CapRover environment variables instead
 COPY .env.example .env
 
-# Expose port 80 for CapRover health checks
-# The application doesn't need to use this port, it's just for health checks
-EXPOSE 80
-
-# Create a simple health check endpoint
-RUN echo '#!/bin/sh\nwhile true; do echo -e "HTTP/1.1 200 OK\n\nOK" | nc -l -p 80; done' > /app/healthcheck.sh && \
-    chmod +x /app/healthcheck.sh
-
-# Start both the health check service and the application
-CMD /app/healthcheck.sh & ./ai
+# Start cloudflared WARP and then launch the bot
+CMD sh -c "\
+    cloudflared tunnel --url http://localhost:8080 --no-autoupdate & \
+    sleep 5 && \
+    ./ai"
