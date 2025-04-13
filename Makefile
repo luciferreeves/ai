@@ -38,7 +38,7 @@ run:
 dev:
 	$(call ensure_setup)
 	@echo "Running in development mode..."
-	@go run $(MAIN_PATH) || true
+	@go run $(MAIN_PATH) 2>/dev/null || true
 
 all: setup clean build run
 

@@ -3,6 +3,7 @@ package music
 import (
 	"ai/config"
 	"ai/types"
+	"ai/utils/logger"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -73,13 +74,17 @@ func Search(query string, limit int) ([]types.MusicSearchResult, error) {
 func SearchSpotify(query string, limit int) ([]types.MusicSearchResult, error) {
 	token, err := getSpotifyToken()
 	if err != nil {
-		return nil, fmt.Errorf("spotify token error: %w", err)
+		logger.Log("Spotify token error: "+err.Error(), types.LogOptions{
+			Prefix: "Search",
+			Level:  types.Error,
+		})
+		return nil, err
 	}
 
 	searchURL := fmt.Sprintf("https://api.spotify.com/v1/search?q=%s&type=track&limit=%d", url.QueryEscape(query), limit)
 	req, err := http.NewRequest("GET", searchURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("request creation error: %w", err)
+		return nil, err
 	}
 
 	req.Header.Add("Authorization", "Bearer "+token)
@@ -87,18 +92,18 @@ func SearchSpotify(query string, limit int) ([]types.MusicSearchResult, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("search request error: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("response read error: %w", err)
+		return nil, err
 	}
 
 	var searchResponse types.SpotifySearchResponse
 	if err := json.Unmarshal(body, &searchResponse); err != nil {
-		return nil, fmt.Errorf("json unmarshal error: %w", err)
+		return nil, err
 	}
 
 	results := []types.MusicSearchResult{}
@@ -114,7 +119,6 @@ func SearchSpotify(query string, limit int) ([]types.MusicSearchResult, error) {
 			thumbnailURL = item.Album.Images[0].URL
 		}
 
-		// Format duration as mm:ss
 		durationSec := item.DurationMs / 1000
 		duration := fmt.Sprintf("%02d:%02d", durationSec/60, durationSec%60)
 
@@ -141,18 +145,18 @@ func SearchYouTube(query string, limit int) ([]types.MusicSearchResult, error) {
 
 	resp, err := http.Get(searchURL)
 	if err != nil {
-		return nil, fmt.Errorf("search request error: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("response read error: %w", err)
+		return nil, err
 	}
 
 	var searchResponse types.YouTubeSearchResponse
 	if err := json.Unmarshal(body, &searchResponse); err != nil {
-		return nil, fmt.Errorf("json unmarshal error: %w", err)
+		return nil, err
 	}
 
 	results := []types.MusicSearchResult{}
@@ -165,7 +169,7 @@ func SearchYouTube(query string, limit int) ([]types.MusicSearchResult, error) {
 			Artist:     item.Snippet.ChannelTitle,
 			URL:        videoURL,
 			ID:         item.ID.VideoID,
-			Duration:   "00:00", // YouTube API requires a separate call to get duration
+			Duration:   "00:00",
 			Thumbnail:  item.Snippet.Thumbnails.High.URL,
 			SourceType: types.YouTube,
 		})
@@ -357,7 +361,6 @@ func GetSpotifyInfo(spotifyURL string) (types.MusicSearchResult, error) {
 		parts := strings.Split(spotifyURL, "/")
 		trackID = parts[len(parts)-1]
 
-		// Remove any query parameters
 		if strings.Contains(trackID, "?") {
 			trackID = strings.Split(trackID, "?")[0]
 		}

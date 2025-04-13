@@ -40,7 +40,6 @@ func PlayAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	// Search for tracks
 	results, err := music.Search(query, 10)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Search error: %v", err), types.LogOptions{
@@ -62,15 +61,13 @@ func PlayAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	// Create choices for autocomplete
 	choices := make([]*discordgo.ApplicationCommandOptionChoice, 0, 25)
 
 	for i, result := range results {
 		if i >= 25 {
-			break // Discord limits to 25 choices
+			break
 		}
 
-		// Format display name
 		var displayName string
 		if result.SourceType == types.YouTube {
 			displayName = fmt.Sprintf("▶️ %s - %s", result.Title, result.Artist)
@@ -78,12 +75,10 @@ func PlayAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			displayName = fmt.Sprintf("🎵 %s - %s", result.Title, result.Artist)
 		}
 
-		// Truncate name if needed
 		if len(displayName) > 100 {
 			displayName = displayName[:97] + "..."
 		}
 
-		// Use just source type and ID as value to avoid length issues
 		valueStr := fmt.Sprintf("%s|%s|%s", result.SourceType, result.ID, result.URL)
 		if len(valueStr) > 100 {
 			valueStr = fmt.Sprintf("%s|%s", result.SourceType, result.ID)
@@ -102,7 +97,6 @@ func PlayAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		})
 	}
 
-	// Send response
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionApplicationCommandAutocompleteResult,
 		Data: &discordgo.InteractionResponseData{

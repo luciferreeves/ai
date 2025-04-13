@@ -17,5 +17,9 @@ var (
 				},
 			},
 		},
+		{
+			Name:        "disconnect",
+			Description: "Disconnect the bot from the voice channel",
+		},
 	}
 )

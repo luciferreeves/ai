@@ -8,6 +8,7 @@ import (
 
 var (
 	SlashCommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		"play": commands.Play,
+		"play":       commands.Play,
+		"disconnect": commands.Disconnect,
 	}
 )

@@ -14,7 +14,6 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	options := i.ApplicationCommandData().Options
 	input := options[0].StringValue()
 
-	// Special cases from autocomplete
 	if input == "min_chars" {
 		respondWithError(s, i, "Enter at least 3 characters to search.")
 		return
@@ -25,7 +24,6 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	// Check if the user is in a voice channel BEFORE deferring response
 	guildID := i.GuildID
 	userID := i.Member.User.ID
 
@@ -36,7 +34,6 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	// Check if bot is already in a voice channel but not the same as the user
 	voice, exists := music.VoiceConnection[guildID]
 	if exists && !isSameVC {
 		channel, err := s.Channel(voice.ChannelID)
@@ -48,12 +45,10 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	// Now that we've checked all error conditions, defer the response
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	})
 
-	// Process track selection or URL
 	var trackURL, trackID, trackTitle string
 	var sourceType types.SourceType
 
@@ -81,12 +76,10 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 				trackID = ytTrack.ID
 			}
 		} else {
-			// malformed selection
 			updateResponse(s, i, "❌ Invalid track selection. Please try again.")
 			return
 		}
 	} else {
-		// Direct URL or search query
 		if music.IsYouTubeURL(input) {
 			trackInfo, err := music.GetYouTubeInfo(input)
 			if err != nil {
@@ -104,7 +97,6 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 				return
 			}
 
-			// Get YouTube equivalent
 			ytTrack, err := music.GetYouTubeForSpotify(trackInfo.Title, trackInfo.Artist)
 			if err != nil {
 				updateResponse(s, i, "❌ Error fetching YouTube equivalent for Spotify track.")
@@ -112,10 +104,9 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			}
 			trackURL = ytTrack.URL
 			trackID = ytTrack.ID
-			trackTitle = ytTrack.Title
+			trackTitle = trackInfo.Title
 			sourceType = types.Spotify
 		} else {
-			// treat as search query
 			results, err := music.Search(input, 1)
 			if err != nil || len(results) == 0 {
 				updateResponse(s, i, "❌ No results found for your search query.")
@@ -141,7 +132,6 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 	}
 
-	// Join voice channel
 	voice, err := music.JoinVoiceChannel(s, guildID, userChannelID)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Failed to join voice channel: %v", err), types.LogOptions{
@@ -152,10 +142,8 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	// Send "now playing" message first
 	updateResponse(s, i, fmt.Sprintf("🎵 Now playing: **%s**", trackTitle))
 
-	// Play the track
 	go func() {
 		err := voice.PlayYouTube(trackURL, trackID)
 		if err != nil {
@@ -163,24 +151,7 @@ func Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 				Prefix: "Play Command",
 				Level:  types.Error,
 			})
-			// Also update the message to show the error to the user
 			updateResponse(s, i, fmt.Sprintf("❌ Error playing **%s**: %v", trackTitle, err))
 		}
 	}()
-}
-
-func respondWithError(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
-	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: message,
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
-func updateResponse(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
-	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-		Content: &message,
-	})
 }
