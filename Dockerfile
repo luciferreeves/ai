@@ -24,9 +24,11 @@ FROM alpine:3.21
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache ffmpeg python3 py3-pip opus opus-dev ca-certificates && \
-    pip3 install --no-cache-dir yt-dlp && \
-    mkdir -p /app/temp
+RUN apk add --no-cache ffmpeg python3 py3-pip opus opus-dev ca-certificates \
+    && python3 -m venv /venv \
+    && . /venv/bin/activate \
+    && pip install --no-cache-dir yt-dlp \
+    && mkdir -p /app/temp
 
 # Copy the binary from the builder stage
 COPY --from=builder /app/ai/ai .
