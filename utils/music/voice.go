@@ -3,7 +3,6 @@ package music
 import (
 	"ai/types"
 	"ai/utils/logger"
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -185,24 +184,30 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 		return err
 	}
 
-	baseName := fmt.Sprintf("./temp/%s_%d", videoID, time.Now().Unix())
-	outputPath := baseName + ".mp3"
-
-	logger.Log("Downloading to: "+outputPath, types.LogOptions{
+	fileName := fmt.Sprintf("./temp/%s_%d.mp3", videoID, time.Now().Unix())
+	logger.Log("Downloading to: "+fileName, types.LogOptions{
 		Prefix: "Music Player",
 		Level:  types.Debug,
 	})
 
-	var stderrOutput bytes.Buffer
-	downloadCmd := exec.Command("yt-dlp",
-		"--no-warnings", "--quiet", "-x",
-		"--audio-format", "mp3",
-		"--audio-quality", "0",
-		"--no-playlist",
-		"--output", baseName+".%(ext)s",
-		videoURL,
-	)
-	downloadCmd.Stderr = &stderrOutput
+	// Check if the cookies file exists
+	var downloadCmd *exec.Cmd
+	cookiesFile := "./cookies/cookies.txt"
+	if _, err := os.Stat(cookiesFile); err == nil {
+		// Cookies file exists, pass it to yt-dlp
+		downloadCmd = exec.Command("yt-dlp", "--no-warnings", "--quiet", "-x", "--audio-format", "mp3",
+			"--audio-quality", "0", "--no-playlist", "--cookies", cookiesFile, "--output", fileName, videoURL)
+	} else {
+		// No cookies file, just run yt-dlp without it
+		downloadCmd = exec.Command("yt-dlp", "--no-warnings", "--quiet", "-x", "--audio-format", "mp3",
+			"--audio-quality", "0", "--no-playlist", "--output", fileName, videoURL)
+	}
+
+	// Completely suppress output
+	devNull, _ := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	defer devNull.Close()
+	downloadCmd.Stdout = devNull
+	downloadCmd.Stderr = devNull
 
 	logger.Log("Starting download", types.LogOptions{
 		Prefix: "Music Player",
@@ -212,10 +217,6 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 	err = downloadCmd.Run()
 	if err != nil {
 		logger.Log("Download error: "+err.Error(), types.LogOptions{
-			Prefix: "Music Player",
-			Level:  types.Error,
-		})
-		logger.Log("yt-dlp stderr: "+stderrOutput.String(), types.LogOptions{
 			Prefix: "Music Player",
 			Level:  types.Error,
 		})
@@ -230,7 +231,7 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 		Level:  types.Info,
 	})
 
-	fileInfo, err := os.Stat(outputPath)
+	fileInfo, err := os.Stat(fileName)
 	if err != nil {
 		logger.Log("File stat error: "+err.Error(), types.LogOptions{
 			Prefix: "Music Player",
@@ -247,9 +248,9 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 		Level:  types.Debug,
 	})
 
-	defer os.Remove(outputPath)
+	defer os.Remove(fileName)
 
-	err = v.playAudioFile(outputPath, stopChan)
+	err = v.playAudioFile(fileName, stopChan)
 	if err != nil {
 		logger.Log("Playback error: "+err.Error(), types.LogOptions{
 			Prefix: "Music Player",
