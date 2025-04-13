@@ -28,6 +28,7 @@ RUN apk add --no-cache ffmpeg python3 py3-pip opus opus-dev ca-certificates \
     && python3 -m venv /venv \
     && . /venv/bin/activate \
     && pip install --no-cache-dir yt-dlp \
+    && ln -s /venv/bin/yt-dlp /usr/local/bin/yt-dlp \
     && mkdir -p /app/temp
 
 # Copy the binary from the builder stage
