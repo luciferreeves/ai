@@ -8,5 +8,10 @@ func InteractionCreateHandler(s *discordgo.Session, i *discordgo.InteractionCrea
 		if handler, ok := SlashCommandHandlers[i.ApplicationCommandData().Name]; ok {
 			handler(s, i)
 		}
+
+	case discordgo.InteractionApplicationCommandAutocomplete:
+		if handler, ok := AutocompleteHandlers[i.ApplicationCommandData().Name]; ok {
+			handler(s, i)
+		}
 	}
 }
