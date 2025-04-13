@@ -197,19 +197,6 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 			Prefix: "Music Player",
 			Level:  types.Debug,
 		})
-		// log the cookies file data
-		cookiesData, err := os.ReadFile(cookiesFile)
-		if err != nil {
-			logger.Log("Error reading cookies file: "+err.Error(), types.LogOptions{
-				Prefix: "Music Player",
-				Level:  types.Error,
-			})
-		}
-
-		logger.Log("Cookies file data: "+string(cookiesData), types.LogOptions{
-			Prefix: "Music Player",
-			Level:  types.Debug,
-		})
 		downloadCmd = exec.Command("yt-dlp", "--no-warnings", "--quiet", "-x", "--audio-format", "mp3",
 			"--audio-quality", "0", "--no-playlist", "--cookies", cookiesFile, "--output", fileName, videoURL)
 	} else {
