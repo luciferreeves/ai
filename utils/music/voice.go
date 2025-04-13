@@ -190,31 +190,73 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 		Level:  types.Debug,
 	})
 
-	// Check if the cookies file exists
 	var downloadCmd *exec.Cmd
 	cookiesFile := "./cookies/cookies.txt"
 	if _, err := os.Stat(cookiesFile); err == nil {
-		// Cookies file exists, pass it to yt-dlp
 		downloadCmd = exec.Command("yt-dlp", "--no-warnings", "--quiet", "-x", "--audio-format", "mp3",
 			"--audio-quality", "0", "--no-playlist", "--cookies", cookiesFile, "--output", fileName, videoURL)
 	} else {
-		// No cookies file, just run yt-dlp without it
 		downloadCmd = exec.Command("yt-dlp", "--no-warnings", "--quiet", "-x", "--audio-format", "mp3",
 			"--audio-quality", "0", "--no-playlist", "--output", fileName, videoURL)
 	}
 
-	// Completely suppress output
-	devNull, _ := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
-	defer devNull.Close()
-	downloadCmd.Stdout = devNull
-	downloadCmd.Stderr = devNull
+	// Create logs for stdout and stderr to capture yt-dlp output
+	stdout, err := downloadCmd.StdoutPipe()
+	if err != nil {
+		logger.Log("Error creating StdoutPipe: "+err.Error(), types.LogOptions{
+			Prefix: "Music Player",
+			Level:  types.Error,
+		})
+		return err
+	}
+	stderr, err := downloadCmd.StderrPipe()
+	if err != nil {
+		logger.Log("Error creating StderrPipe: "+err.Error(), types.LogOptions{
+			Prefix: "Music Player",
+			Level:  types.Error,
+		})
+		return err
+	}
 
-	logger.Log("Starting download", types.LogOptions{
-		Prefix: "Music Player",
-		Level:  types.Debug,
-	})
+	// Start the download process
+	err = downloadCmd.Start()
+	if err != nil {
+		logger.Log("Error starting yt-dlp command: "+err.Error(), types.LogOptions{
+			Prefix: "Music Player",
+			Level:  types.Error,
+		})
+		return err
+	}
 
-	err = downloadCmd.Run()
+	// Log the stdout and stderr
+	go func() {
+		stdoutLogs := make([]byte, 1024)
+		for {
+			n, err := stdout.Read(stdoutLogs)
+			if err != nil {
+				break
+			}
+			logger.Log("yt-dlp stdout: "+string(stdoutLogs[:n]), types.LogOptions{
+				Prefix: "Music Player",
+				Level:  types.Debug,
+			})
+		}
+	}()
+	go func() {
+		stderrLogs := make([]byte, 1024)
+		for {
+			n, err := stderr.Read(stderrLogs)
+			if err != nil {
+				break
+			}
+			logger.Log("yt-dlp stderr: "+string(stderrLogs[:n]), types.LogOptions{
+				Prefix: "Music Player",
+				Level:  types.Error,
+			})
+		}
+	}()
+
+	err = downloadCmd.Wait()
 	if err != nil {
 		logger.Log("Download error: "+err.Error(), types.LogOptions{
 			Prefix: "Music Player",
