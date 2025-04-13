@@ -3,6 +3,7 @@ package music
 import (
 	"ai/types"
 	"ai/utils/logger"
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -184,20 +185,24 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 		return err
 	}
 
-	fileName := fmt.Sprintf("./temp/%s_%d.mp3", videoID, time.Now().Unix())
-	logger.Log("Downloading to: "+fileName, types.LogOptions{
+	baseName := fmt.Sprintf("./temp/%s_%d", videoID, time.Now().Unix())
+	outputPath := baseName + ".mp3"
+
+	logger.Log("Downloading to: "+outputPath, types.LogOptions{
 		Prefix: "Music Player",
 		Level:  types.Debug,
 	})
 
-	downloadCmd := exec.Command("yt-dlp", "--no-warnings", "--quiet", "-x", "--audio-format", "mp3",
-		"--audio-quality", "0", "--no-playlist", "--output", fileName, videoURL)
-
-	// Completely suppress output
-	devNull, _ := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
-	defer devNull.Close()
-	downloadCmd.Stdout = devNull
-	downloadCmd.Stderr = devNull
+	var stderrOutput bytes.Buffer
+	downloadCmd := exec.Command("yt-dlp",
+		"--no-warnings", "--quiet", "-x",
+		"--audio-format", "mp3",
+		"--audio-quality", "0",
+		"--no-playlist",
+		"--output", baseName+".%(ext)s",
+		videoURL,
+	)
+	downloadCmd.Stderr = &stderrOutput
 
 	logger.Log("Starting download", types.LogOptions{
 		Prefix: "Music Player",
@@ -207,6 +212,10 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 	err = downloadCmd.Run()
 	if err != nil {
 		logger.Log("Download error: "+err.Error(), types.LogOptions{
+			Prefix: "Music Player",
+			Level:  types.Error,
+		})
+		logger.Log("yt-dlp stderr: "+stderrOutput.String(), types.LogOptions{
 			Prefix: "Music Player",
 			Level:  types.Error,
 		})
@@ -221,7 +230,7 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 		Level:  types.Info,
 	})
 
-	fileInfo, err := os.Stat(fileName)
+	fileInfo, err := os.Stat(outputPath)
 	if err != nil {
 		logger.Log("File stat error: "+err.Error(), types.LogOptions{
 			Prefix: "Music Player",
@@ -238,9 +247,9 @@ func (v *VoiceInstance) PlayYouTube(videoURL, videoID string) error {
 		Level:  types.Debug,
 	})
 
-	defer os.Remove(fileName)
+	defer os.Remove(outputPath)
 
-	err = v.playAudioFile(fileName, stopChan)
+	err = v.playAudioFile(outputPath, stopChan)
 	if err != nil {
 		logger.Log("Playback error: "+err.Error(), types.LogOptions{
 			Prefix: "Music Player",
